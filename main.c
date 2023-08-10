@@ -1,41 +1,57 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#define MAXB 100
+#define PORT 8888
+#define PATH "/tmp/stream_serv"
+#include <linux/udp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <error.h>
+#include <sys/types.h>
 
-#define port 2223
+int
+main(int argc, char* argv[])
+{
+    struct sockaddr_in serv, client;
 
-int main(int argc, char** argv) {
+    socklen_t addrlen = sizeof(serv);
 
-	struct sockaddr_in server;
+    int fd;
+    char* msg = (char*)malloc(sizeof(struct udphdr) + 20);
+    char* buf = (char*)malloc(sizeof(struct udphdr) + 42);
+    char hi[MAXB];
 
-	int raw_fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
-	if (-1 == raw_fd) {
-		perror("create socket error");
-		exit(EXIT_FAILURE);
-	}
-	int count = 0;
+    memset(&client, '\0', sizeof(struct sockaddr_in));
 
-	char* received = (char*)malloc(128);
+    fd = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+    if (fd == -1)
+    {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
 
-	memset(&server, '\0', sizeof(struct sockaddr_in));
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = inet_addr("127.0.0.1");
-	server.sin_port = htons(port);
+    serv.sin_family = AF_INET;
+    serv.sin_port = htons(PORT);
+    serv.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    
+    bind(fd, (struct sockaddr*)&serv, addrlen);
 
-	if (-1 == bind(raw_fd, (struct sockaddr*)&server, sizeof(struct sockaddr_in))) {
-		perror("Bind error");
-		close(raw_fd);
-		exit(EXIT_FAILURE);
-	}
+    while (1)
+    {
+        if (recvfrom(fd, (void*)buf, sizeof(struct udphdr) + 42, 0,
+            (struct sockaddr*)&client, &addrlen)
+            == -1)
+        {
+            perror("recv");
+            exit(EXIT_FAILURE);
+        };
+        char* bufp = buf + 28;
+        printf("[!]Packet received: %s\n", bufp);
+    }
+    
+    printf("program finished!!!\n");
+    getchar();
+    close(fd);
 
-	while (1) {
-		recvfrom(raw_fd, received, sizeof(received), 0,  NULL, NULL);
-		count++;
-		printf("%d\n", count);
-	}
-
-	exit(EXIT_SUCCESS);
-
+    exit(EXIT_SUCCESS);
 }
