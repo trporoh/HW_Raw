@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define MAXB 100
 #define PORT 8888
 #define PATH "/tmp/stream_serv"
+#define ADDR "127.0.0.2"
 #include <linux/udp.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -19,7 +19,6 @@ main(int argc, char* argv[])
     int fd;
     char* msg = (char*)malloc(sizeof(struct udphdr) + 20);
     char* buf = (char*)malloc(sizeof(struct udphdr) + 42);
-    char hi[MAXB];
 
     memset(&client, '\0', sizeof(struct sockaddr_in));
 
@@ -32,7 +31,7 @@ main(int argc, char* argv[])
 
     serv.sin_family = AF_INET;
     serv.sin_port = htons(PORT);
-    serv.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    serv.sin_addr.s_addr = inet_addr(ADDR);
     
     bind(fd, (struct sockaddr*)&serv, addrlen);
 
