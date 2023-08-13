@@ -3,16 +3,22 @@
 #include <string.h>
 #define PORT 8888
 #define PATH "/tmp/stream_serv"
-#define ADDR "127.0.0.2"
+#define ADDR "127.0.0.5"
 #include <linux/udp.h>
+#include <linux/if_packet.h>
+#include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
+
+char SMAC[6] = { 0x28, 0xd0, 0xea, 0x8c, 0xb7, 0x8e };
 
 int
-main(int argc, char* argv[])
+main(int argc, char** argv)
 {
-    struct sockaddr_in serv, client;
+    struct sockaddr_ll serv, client;
 
     socklen_t addrlen = sizeof(serv);
 
@@ -29,9 +35,10 @@ main(int argc, char* argv[])
         exit(EXIT_FAILURE);
     }
 
-    serv.sin_family = AF_INET;
-    serv.sin_port = htons(PORT);
-    serv.sin_addr.s_addr = inet_addr(ADDR);
+    serv.sll_family = AF_INET;
+    serv.sll_halen = 6;
+    serv.sll_ifindex = 2;
+    strcpy(serv.sll_addr, SMAC);
     
     bind(fd, (struct sockaddr*)&serv, addrlen);
 
@@ -44,8 +51,15 @@ main(int argc, char* argv[])
             perror("recv");
             exit(EXIT_FAILURE);
         };
-        char* bufp = buf + 28;
-        printf("[!]Packet received: %s\n", bufp);
+        char* bufp = buf + 20;
+
+        printf("src-port = %d\ndst-port = %d\nlenght = %d\n check = "
+            "%d\nmessage:%s\n\n",
+            htons(((struct udphdr*)bufp)->source),
+            htons(((struct udphdr*)bufp)->dest),
+            htons(((struct udphdr*)bufp)->len),
+            htons(((struct udphdr*)bufp)->check),
+            (bufp + sizeof(struct udphdr)));
     }
     
     printf("program finished!!!\n");
